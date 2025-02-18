@@ -7,7 +7,10 @@ import base64
 app = Flask(__name__)
 
 # Load the YOLO model (supports .pt or .onnx models)
-model = YOLO("./models/best.onnx")  # Replace with your model path (yolov8.pt for PyTorch)
+try:
+    model = YOLO("./models/best.onnx")  # Replace with your model path (yolov8.pt for PyTorch)
+except Exception as e:
+    print('Error encountered: ', e)
 
 # encode the image to send as jason in response
 def encode_image(image):
@@ -31,7 +34,7 @@ def draw_boxes(image, results):
 
     return image
 
-
+# Temp Home page to check if the webapp is deployed
 @app.route('/')
 def Home():
     return 'Home Page'
@@ -43,15 +46,23 @@ def predict():
         return jsonify({"error": "No image file provided"}), 400
 
     # Load image from request
-    image_file = request.files["image"]
-    image = np.frombuffer(image_file.read(), np.uint8)
-    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    try:
+        image_file = request.files["image"]
+        image = np.frombuffer(image_file.read(), np.uint8)
+        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    except Exception as e:
+        return jsonify({"error": e}), 400
 
     # Run YOLO inference
-    results = model(image)
+    try:
+        results = model(image)
+    except Exception as e:
+        return jsonify({"error": "No image file provided"}), 400
 
     # Extract predictions
     detections = []
+    if not results:
+        return jsonify({"error": "Nothing detected"}), 400
     for result in results:
         for box, conf, cls in zip(result.boxes.xyxy.cpu().numpy(), 
                                   result.boxes.conf.cpu().numpy(), 
